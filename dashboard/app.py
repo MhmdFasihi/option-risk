@@ -136,19 +136,28 @@ def main():
                         confidence_level=confidence_level
                     )
                     
+                    # VaR should be displayed as positive loss amount
+                    var_display = abs(hist_var)
+                    cvar_display = abs(hist_cvar)
+                    
                     st.metric(
                         f"Historical VaR ({confidence_level*100:.0f}%)",
-                        format_currency(hist_var),
+                        format_currency(var_display),
                         delta=None,
-                        help="Maximum expected loss at given confidence level"
+                        help=f"Maximum expected loss at {confidence_level*100:.0f}% confidence level"
                     )
                     
                     st.metric(
                         f"Historical CVaR ({confidence_level*100:.0f}%)",
-                        format_currency(hist_cvar),
+                        format_currency(cvar_display),
                         delta=None,
                         help="Expected loss given VaR is exceeded"
                     )
+                    
+                    # Show percentage of portfolio
+                    var_pct = (var_display / portfolio.total_value) * 100
+                    st.caption(f"VaR as % of portfolio: {var_pct:.2f}%")
+                    
                 except Exception as e:
                     st.error(f"Error calculating historical metrics: {str(e)}")
         
@@ -163,19 +172,28 @@ def main():
                         num_simulations=config.MC_SIMULATIONS
                     )
                     
+                    # Display as positive loss amounts
+                    mc_var_display = abs(mc_var)
+                    mc_cvar_display = abs(mc_cvar)
+                    
                     st.metric(
                         f"Monte Carlo VaR ({confidence_level*100:.0f}%)",
-                        format_currency(mc_var),
+                        format_currency(mc_var_display),
                         delta=None,
                         help=f"VaR from {config.MC_SIMULATIONS:,} simulations"
                     )
                     
                     st.metric(
                         f"Monte Carlo CVaR ({confidence_level*100:.0f}%)",
-                        format_currency(mc_cvar),
+                        format_currency(mc_cvar_display),
                         delta=None,
                         help="Expected shortfall from simulations"
                     )
+                    
+                    # Show percentage of portfolio
+                    mc_var_pct = (mc_var_display / portfolio.total_value) * 100
+                    st.caption(f"VaR as % of portfolio: {mc_var_pct:.2f}%")
+                    
                 except Exception as e:
                     st.error(f"Error calculating Monte Carlo metrics: {str(e)}")
         

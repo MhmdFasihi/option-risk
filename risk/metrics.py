@@ -66,38 +66,58 @@ def historical_var_cvar(
         window: Rolling window in days (default 252 = 1 year)
         
     Returns:
-        Tuple of (VaR, CVaR)
+        Tuple of (VaR, CVaR) - both negative values representing potential losses
     """
-    # Calculate portfolio returns based on current positions
-    portfolio_values = []
+    # Get all unique symbols
+    symbols = set(p.symbol for p in portfolio.positions)
     
-    for symbol, hist in historical_data.items():
-        if len(hist) < window:
-            continue
-        
-        # Get positions for this symbol
-        symbol_positions = [p for p in portfolio.positions if p.symbol == symbol]
-        
-        for pos in symbol_positions:
-            if pos.position_type == 'stock':
-                # Simple stock returns
-                values = hist['Close'].tail(window) * pos.quantity
-                portfolio_values.append(values)
+    # Build historical portfolio values
+    # Find common date range across all symbols
+    common_dates = None
+    for symbol in symbols:
+        if symbol in historical_data and len(historical_data[symbol]) >= window:
+            hist = historical_data[symbol]['Close'].tail(window)
+            if common_dates is None:
+                common_dates = hist.index
+            else:
+                common_dates = common_dates.intersection(hist.index)
     
-    # Sum all position values over time
-    if not portfolio_values:
+    if common_dates is None or len(common_dates) < 2:
         return 0.0, 0.0
     
-    portfolio_series = pd.concat(portfolio_values, axis=1).sum(axis=1)
+    # Calculate portfolio value at each date
+    portfolio_values = []
+    
+    for date in common_dates:
+        daily_value = 0
+        
+        for pos in portfolio.positions:
+            if pos.position_type == 'stock' and pos.symbol in historical_data:
+                hist = historical_data[pos.symbol]
+                if date in hist.index:
+                    price = hist.loc[date, 'Close']
+                    daily_value += price * pos.quantity
+        
+        portfolio_values.append(daily_value)
+    
+    if len(portfolio_values) < 2:
+        return 0.0, 0.0
+    
+    # Calculate returns
+    portfolio_series = pd.Series(portfolio_values, index=common_dates)
     returns = portfolio_series.pct_change().dropna()
     
-    var = calculate_var(returns.values, confidence_level, method='historical')
-    cvar = calculate_cvar(returns.values, confidence_level)
+    if len(returns) == 0:
+        return 0.0, 0.0
     
-    # Convert to dollar amounts
+    # Calculate VaR and CVaR (these are percentages)
+    var_pct = calculate_var(returns.values, confidence_level, method='historical')
+    cvar_pct = calculate_cvar(returns.values, confidence_level)
+    
+    # Convert to dollar amounts (negative = loss)
     current_value = portfolio.total_value
-    var_dollar = var * current_value
-    cvar_dollar = cvar * current_value
+    var_dollar = var_pct * current_value
+    cvar_dollar = cvar_pct * current_value
     
     return var_dollar, cvar_dollar
 
