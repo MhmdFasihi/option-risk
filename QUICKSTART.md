@@ -22,11 +22,14 @@
 
 ## Running the Dashboard
 
+**Important**: Make sure the conda environment is activated first!
+
 ```bash
+conda activate option-risk
 streamlit run dashboard/app.py
 ```
 
-The dashboard will open in your browser at http://localhost:8501
+The dashboard will open in your browser at <http://localhost:8501>
 
 ## Features Overview
 

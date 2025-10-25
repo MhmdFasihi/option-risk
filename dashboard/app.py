@@ -1,9 +1,17 @@
 """Main Streamlit dashboard for options portfolio risk management."""
 
+import sys
+from pathlib import Path
+
+# Add parent directory to Python path
+parent_dir = Path(__file__).parent.parent
+if str(parent_dir) not in sys.path:
+    sys.path.insert(0, str(parent_dir))
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from data import load_sample_portfolio
+from data import load_cached_sample_portfolio
 from risk import PortfolioRisk
 from surfaces import create_sample_volatility_surface, create_sample_greek_surface
 from utils import format_currency, format_percentage, format_greek
@@ -21,11 +29,12 @@ st.set_page_config(
 def load_portfolio():
     """Load the portfolio (cached)."""
     if config.USE_SAMPLE_DATA:
-        return load_sample_portfolio()
+        # Use cached portfolio to avoid yfinance rate limits
+        return load_cached_sample_portfolio()
     else:
         # TODO: Implement API integration
         st.warning("API integration not yet implemented. Using sample data.")
-        return load_sample_portfolio()
+        return load_cached_sample_portfolio()
 
 
 def main():

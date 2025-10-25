@@ -25,6 +25,12 @@ conda activate option-risk
 streamlit run dashboard/app.py
 ```
 
+Or use the launcher:
+
+```bash
+python run_dashboard.py
+```
+
 ## Project Structure
 
 ```
