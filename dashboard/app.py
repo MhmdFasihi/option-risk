@@ -10,10 +10,15 @@ if str(parent_dir) not in sys.path:
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from data import load_cached_sample_portfolio
 from risk import PortfolioRisk
-from surfaces import create_sample_volatility_surface, create_sample_greek_surface
+from surfaces import (
+    create_sample_volatility_surface, 
+    create_sample_greek_surface,
+    create_returns_surface
+)
 from utils import format_currency, format_percentage, format_greek
 import config
 
@@ -69,10 +74,11 @@ def main():
     st.sidebar.info(f"**Positions:** {len(portfolio.positions)}")
     
     # Main content - tabs
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📈 Portfolio Overview",
         "⚠️ Risk Metrics",
         "🏔️ 3D Surfaces",
+        "💰 Returns Surface",
         "📊 Position Details"
     ])
     
@@ -261,8 +267,101 @@ def main():
                 except Exception as e:
                     st.error(f"Error generating Greek surface: {str(e)}")
     
-    # Tab 4: Position Details
+    # Tab 4: Returns Surface
     with tab4:
+        st.header("💰 Option Returns Surface")
+        st.markdown("""
+        This surface shows how option returns vary with:
+        - **X-axis**: Underlying asset price
+        - **Y-axis**: Implied volatility
+        - **Z-axis**: Return percentage
+        """)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Get option positions
+            option_positions = [p for p in portfolio.positions if p.position_type == 'option']
+            
+            if option_positions:
+                option_choices = [
+                    f"{p.symbol} {p.strike} {p.option_type.upper()} ({p.quantity} contracts)"
+                    for p in option_positions
+                ]
+                selected_idx = st.selectbox(
+                    "Select Option Position",
+                    range(len(option_choices)),
+                    format_func=lambda i: option_choices[i]
+                )
+                selected_position = option_positions[selected_idx]
+            else:
+                st.warning("No option positions in portfolio")
+                selected_position = None
+        
+        with col2:
+            # Days to expiry slider
+            max_days = 180
+            days_to_expiry = st.slider(
+                "Days to Expiration",
+                min_value=1,
+                max_value=max_days,
+                value=30,
+                help="Adjust to see how returns change with time"
+            )
+        
+        if selected_position:
+            with st.spinner("Generating returns surface..."):
+                try:
+                    # Get underlying price
+                    stock_positions = [p for p in portfolio.positions 
+                                     if p.symbol == selected_position.symbol and p.position_type == 'stock']
+                    if stock_positions:
+                        base_price = stock_positions[0].current_price
+                    else:
+                        base_price = selected_position.strike
+                    
+                    # Generate price range (±30% from current)
+                    price_range = np.linspace(base_price * 0.7, base_price * 1.3, 25)
+                    
+                    # Generate volatility range (15% to 50%)
+                    vol_range = np.linspace(0.15, 0.50, 20)
+                    
+                    fig = create_returns_surface(
+                        underlying_prices=price_range,
+                        implied_vols=vol_range,
+                        strike=selected_position.strike,
+                        days_to_expiry=days_to_expiry,
+                        risk_free_rate=config.RISK_FREE_RATE,
+                        option_type=selected_position.option_type,
+                        initial_option_price=selected_position.current_price
+                    )
+                    
+                    st.plotly_chart(fig, width='stretch')
+                    
+                    # Additional info
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Strike Price", f"${selected_position.strike:.2f}")
+                    with col2:
+                        st.metric("Current Price", f"${selected_position.current_price:.2f}")
+                    with col3:
+                        st.metric("Contracts", selected_position.quantity)
+                    
+                    st.info("""
+                    💡 **How to read this chart:**
+                    - Green areas show profitable scenarios
+                    - Red areas show losses
+                    - The surface shows all possible returns based on price and volatility changes
+                    - Use the slider to see how time decay affects returns
+                    """)
+                    
+                except Exception as e:
+                    st.error(f"Error generating returns surface: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
+    
+    # Tab 5: Position Details
+    with tab5:
         st.header("Position Details")
         
         # Filter controls
