@@ -112,7 +112,7 @@ def main():
                 lambda x: format_percentage(x) if pd.notna(x) else 'N/A'
             )
         
-        st.dataframe(display_df, use_container_width=True)
+        st.dataframe(display_df, width='stretch')
     
     # Tab 2: Risk Metrics
     with tab2:
@@ -220,7 +220,7 @@ def main():
                         underlying_price = 100
                     
                     fig = create_sample_volatility_surface(underlying_price=underlying_price)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                     
                     st.info("💡 The volatility surface shows how implied volatility varies with strike price and time to expiration.")
                 except Exception as e:
@@ -247,7 +247,7 @@ def main():
                         greek_name=greek_choice.lower(),
                         underlying_price=underlying_price
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                     
                     # Greek explanations
                     explanations = {
@@ -295,7 +295,7 @@ def main():
             df = df[(df['type'] == 'stock') | (df['option_type'].isin(option_type))]
         
         # Display detailed table
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width='stretch')
         
         # Summary statistics
         st.subheader("Summary Statistics")
