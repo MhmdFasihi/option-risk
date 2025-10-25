@@ -199,6 +199,34 @@ def main():
         
         st.markdown("---")
         
+        # Explanation of VaR metrics
+        with st.expander("ℹ️ About VaR and CVaR Calculations"):
+            st.markdown("""
+            **Value at Risk (VaR)**: Maximum expected loss at a given confidence level over 1 day.
+            - 95% VaR of $5,000 means: "There's a 95% chance losses won't exceed $5,000 tomorrow"
+            - Or equivalently: "There's a 5% chance of losing more than $5,000"
+            
+            **Conditional VaR (CVaR)**: Expected loss when VaR is exceeded (worst 5% of scenarios).
+            - Always higher than VaR
+            - Shows average loss in the "tail" scenarios
+            
+            **Historical Method**: 
+            - Uses actual past price movements (252 trading days)
+            - Assumes future will behave like the past
+            
+            **Monte Carlo Method**:
+            - Simulates 10,000 possible future scenarios using statistical models
+            - Assumes prices follow Geometric Brownian Motion (GBM)
+            - Options valued using Delta approximation for speed
+            
+            **Why do they differ?**
+            - Historical reflects actual market behavior
+            - Monte Carlo uses theoretical assumptions
+            - Both are useful for different perspectives on risk
+            """)
+        
+        st.markdown("---")
+        
         # Greeks breakdown
         st.subheader("📊 Portfolio Greeks")
         

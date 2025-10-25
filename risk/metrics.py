@@ -142,60 +142,82 @@ def monte_carlo_var_cvar(
         Tuple of (VaR, CVaR, simulated_returns)
     """
     current_value = portfolio.total_value
-    simulated_values = []
+    
+    # Calculate Greeks for all option positions first
+    from risk.metrics import calculate_portfolio_greeks
+    calculate_portfolio_greeks(portfolio)
     
     # Group positions by underlying
     underlyings = {}
     for pos in portfolio.positions:
         if pos.symbol not in underlyings:
-            underlyings[pos.symbol] = []
-        underlyings[pos.symbol].append(pos)
+            underlyings[pos.symbol] = {
+                'positions': [],
+                'base_price': None
+            }
+        underlyings[pos.symbol]['positions'].append(pos)
     
-    # Simulate for each underlying
-    for symbol, positions in underlyings.items():
-        # Get stock position for current price
-        stock_pos = [p for p in positions if p.position_type == 'stock']
+    # Get base prices for each underlying
+    for symbol, data in underlyings.items():
+        stock_pos = [p for p in data['positions'] if p.position_type == 'stock']
         if stock_pos:
-            S0 = stock_pos[0].current_price
+            data['base_price'] = stock_pos[0].current_price
         else:
-            # Get from option position's underlying price
-            # For simplicity, use first option's implied underlying
-            S0 = positions[0].current_price  # This should be fetched properly
-            
-        # Simulate price paths
-        # Assume 20% volatility and 5% drift for simplicity
-        # In production, estimate from historical data
-        mu = 0.05 / 252  # Daily drift
-        sigma = 0.20 / np.sqrt(252)  # Daily volatility
+            # Use strike price of first option as approximation
+            option_pos = [p for p in data['positions'] if p.position_type == 'option']
+            if option_pos:
+                data['base_price'] = option_pos[0].strike
+            else:
+                data['base_price'] = 100  # Default fallback
+    
+    # Simulate portfolio values
+    simulated_portfolio_values = np.zeros(num_simulations)
+    
+    for symbol, data in underlyings.items():
+        S0 = data['base_price']
+        
+        # Simulate price paths using GBM
+        # Use realistic parameters - could be estimated from historical data
+        mu = 0.10 / 252  # 10% annual drift, daily
+        sigma = 0.25 / np.sqrt(252)  # 25% annual volatility, daily
         
         dt = time_horizon
         Z = np.random.standard_normal(num_simulations)
         ST = S0 * np.exp((mu - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z)
         
         # Calculate position values at simulated prices
-        for pos in positions:
+        for pos in data['positions']:
             if pos.position_type == 'stock':
-                simulated_values.append(ST * pos.quantity)
-            # For options, would need to reprice with new underlying
-            # Simplified here - just use delta approximation
-            elif pos.position_type == 'option' and pos.delta is not None:
-                price_change = ST - S0
-                option_value_change = pos.delta * price_change * pos.quantity * 100
-                simulated_values.append(option_value_change)
+                # Stock value = price * quantity
+                position_values = ST * pos.quantity
+                simulated_portfolio_values += position_values
+                
+            elif pos.position_type == 'option':
+                # Use delta approximation for speed
+                # (Full repricing would be more accurate but slower)
+                if pos.delta is not None:
+                    price_change = ST - S0
+                    # Delta approximation: change in option value ≈ delta * price change
+                    option_value_change = pos.delta * price_change * pos.quantity * 100
+                    # Add current option value plus change
+                    current_option_value = pos.current_price * pos.quantity * 100
+                    position_values = current_option_value + option_value_change
+                    simulated_portfolio_values += position_values
+                else:
+                    # If no delta, just use current value (no change)
+                    current_option_value = pos.current_price * pos.quantity * 100
+                    simulated_portfolio_values += current_option_value
     
-    # Sum all simulated values
-    if not simulated_values:
-        return 0.0, 0.0, np.array([])
+    # Calculate returns
+    simulated_returns = (simulated_portfolio_values - current_value) / current_value
     
-    total_simulated = np.sum(simulated_values, axis=0)
-    simulated_returns = (total_simulated - current_value) / current_value
+    # Calculate VaR and CVaR
+    var_pct = calculate_var(simulated_returns, confidence_level, method='monte_carlo')
+    cvar_pct = calculate_cvar(simulated_returns, confidence_level)
     
-    var = calculate_var(simulated_returns, confidence_level, method='monte_carlo')
-    cvar = calculate_cvar(simulated_returns, confidence_level)
-    
-    # Convert to dollar amounts
-    var_dollar = var * current_value
-    cvar_dollar = cvar * current_value
+    # Convert to dollar amounts (negative = loss)
+    var_dollar = var_pct * current_value
+    cvar_dollar = cvar_pct * current_value
     
     return var_dollar, cvar_dollar, simulated_returns
 
