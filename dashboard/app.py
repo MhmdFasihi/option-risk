@@ -226,7 +226,7 @@ def main():
                         underlying_price = 100
                     
                     fig = create_sample_volatility_surface(underlying_price=underlying_price)
-                    st.plotly_chart(fig, width='stretch')
+                    st.plotly_chart(fig, use_container_width=True)
                     
                     st.info("💡 The volatility surface shows how implied volatility varies with strike price and time to expiration.")
                 except Exception as e:
@@ -253,7 +253,7 @@ def main():
                         greek_name=greek_choice.lower(),
                         underlying_price=underlying_price
                     )
-                    st.plotly_chart(fig, width='stretch')
+                    st.plotly_chart(fig, use_container_width=True)
                     
                     # Greek explanations
                     explanations = {
@@ -336,7 +336,7 @@ def main():
                         initial_option_price=selected_position.current_price
                     )
                     
-                    st.plotly_chart(fig, width='stretch')
+                    st.plotly_chart(fig, use_container_width=True)
                     
                     # Additional info
                     col1, col2, col3 = st.columns(3)
