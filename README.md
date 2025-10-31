@@ -12,11 +12,21 @@ Portfolio risk management application for analyzing options and underlying asset
 
 ## Setup
 
-### Create Conda Environment
+### Create Environment
 
+**For local development (recommended):**
 ```bash
-conda env create -f environment.yml
+# Using conda (faster locally)
+conda env create -f environment.yml.local
 conda activate option-risk
+```
+
+**Alternative with pip:**
+```bash
+# Using pip/venv
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 ### Run Dashboard

@@ -14,7 +14,22 @@
    conda activate option-risk
    ```
 
-3. **Configure environment (optional)**
+3. **Create environment**
+   
+   **Option A: Using conda (recommended for local dev):**
+   ```bash
+   conda env create -f environment.yml.local
+   conda activate option-risk
+   ```
+   
+   **Option B: Using pip:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment (optional)**
    ```bash
    cp .env.example .env
    # Edit .env if you want to customize settings
